@@ -2,12 +2,11 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ATS Resume Parser</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced ATS Resume Parser</title>
 
   <style>
-
     body {
       font-family: Arial, sans-serif;
       background: #f3f4f6;
@@ -15,7 +14,7 @@
     }
 
     .container {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: auto;
       background: white;
       padding: 32px;
@@ -25,7 +24,7 @@
 
     textarea {
       width: 100%;
-      height: 320px;
+      height: 350px;
       padding: 16px;
       border-radius: 12px;
       border: 1px solid #ccc;
@@ -60,16 +59,14 @@
       border-radius: 10px;
       border: 1px solid #ccc;
     }
-
   </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-  <h1>ATS Resume Parser</h1>
+  <h1>Advanced ATS Resume Parser</h1>
 
   <textarea id="resume" placeholder="Paste candidate resume here..."></textarea>
 
@@ -137,21 +134,19 @@
 <script>
 
 function normalizeText(text) {
-
   return text
     .replace(/\r/g, '')
     .replace(/\t/g, ' ')
-    .replace(/•/g, ' ')
-    .replace(//g, ' ')
+    .replace(/•||▪|◦/g, ' ')
+    .replace(/Page\s+\d+\s+of\s+\d+/gi, '')
+    .replace(/([A-Z])\s(?=[A-Z])/g, '\$1')
     .replace(/\s{2,}/g, ' ')
     .trim();
-
 }
 
 function extractDetails() {
 
   const rawText = document.getElementById('resume').value;
-
   const text = normalizeText(rawText);
 
   const lines = rawText
@@ -159,28 +154,38 @@ function extractDetails() {
     .map(line => line.trim())
     .filter(line => line.length > 0);
 
-  // FULL NAME
+  const stopSections = [
+    'references',
+    'referees',
+    'hobbies',
+    'achievements'
+  ];
+
+  const ignoreLines = [
+    'experience gained',
+    'responsibilities',
+    'strengths',
+    'summary',
+    'profile'
+  ];
 
   let fullName = '';
 
   for (let line of lines) {
+
+    const lower = line.toLowerCase();
 
     if (
       line.length > 3 &&
       line.length < 60 &&
       !line.includes('@') &&
       !line.match(/\d{4}/) &&
-      !line.toLowerCase().includes('page')
+      !lower.includes('page')
     ) {
-
       fullName = line;
       break;
-
     }
-
   }
-
-  // EMAIL
 
   const emailMatch = text.match(
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
@@ -188,15 +193,11 @@ function extractDetails() {
 
   const email = emailMatch ? emailMatch[0] : '';
 
-  // PHONE
-
   const phoneMatch = text.match(
-    /(\+?\d[\d\s\-]{7,})/
+    /(\+?\d[\d\s\-]{8,})/
   );
 
   const phone = phoneMatch ? phoneMatch[0] : '';
-
-  // LOCATION
 
   let location = '';
 
@@ -208,20 +209,14 @@ function extractDetails() {
     /([A-Za-z\s]+,\s*Selangor)/i
   ];
 
-  for (let i = 0; i < locationPatterns.length; i++) {
-
-    const match = text.match(locationPatterns[i]);
+  for (let pattern of locationPatterns) {
+    const match = text.match(pattern);
 
     if (match) {
-
       location = match[0];
       break;
-
     }
-
   }
-
-  // EXPERIENCE
 
   let experience = '';
 
@@ -230,34 +225,35 @@ function extractDetails() {
     /(\d+)\+?\s+years?\s+of\s+experience/i
   ];
 
-  for (let i = 0; i < expPatterns.length; i++) {
+  for (let pattern of expPatterns) {
 
-    const match = text.match(expPatterns[i]);
+    const match = text.match(pattern);
 
     if (match) {
-
       experience = match[1] + '+ years';
       break;
-
     }
-
   }
-
-  // SALARY
 
   let salary = '';
 
-  const salaryMatch = text.match(
-    /(RM|HK\$|SGD)\s?[\d,]+(?:\/month)?/i
-  );
+  const salaryContextPatterns = [
+    /Expected Salary\s*(RM|HK\$|SGD)\s?[\d,]+/i,
+    /Salary Expectation\s*(RM|HK\$|SGD)\s?[\d,]+/i
+  ];
 
-  if (salaryMatch) {
+  for (let pattern of salaryContextPatterns) {
 
-    salary = salaryMatch[0];
+    const match = text.match(pattern);
 
+    if (match) {
+      salary = match[0]
+        .replace(/Expected Salary/i, '')
+        .replace(/Salary Expectation/i, '')
+        .trim();
+      break;
+    }
   }
-
-  // NOTICE
 
   let notice = '';
 
@@ -269,79 +265,84 @@ function extractDetails() {
     '3 Months'
   ];
 
-  for (let i = 0; i < noticeKeywords.length; i++) {
+  for (let keyword of noticeKeywords) {
 
     if (
-      text.toLowerCase().includes(
-        noticeKeywords[i].toLowerCase()
-      )
+      text.toLowerCase().includes(keyword.toLowerCase())
     ) {
-
-      notice = noticeKeywords[i];
+      notice = keyword;
       break;
-
     }
-
   }
-
-  // CURRENT ROLE + COMPANY
 
   let currentTitle = '';
   let currentCompany = '';
 
+  const companyKeywords = [
+    'sdn bhd',
+    'berhad',
+    'ltd',
+    'inc',
+    'group',
+    'services',
+    'bank',
+    'telecom'
+  ];
+
   const employmentHeaders = [
-    'employment history',
     'working experiences',
-    'experience',
-    'professional experience'
+    'employment history',
+    'professional experience',
+    'experience'
   ];
 
   let employmentIndex = -1;
 
-  for (let i = 0; i < lines.length; i++) {
+  lines.forEach((line, index) => {
 
-    for (let j = 0; j < employmentHeaders.length; j++) {
+    employmentHeaders.forEach(header => {
 
       if (
-        lines[i].toLowerCase().includes(
-          employmentHeaders[j]
-        )
+        line.toLowerCase().includes(header)
       ) {
-
-        employmentIndex = i;
-
+        employmentIndex = index;
       }
 
-    }
+    });
 
-  }
+  });
 
   if (employmentIndex !== -1) {
 
     for (let i = employmentIndex; i < lines.length; i++) {
 
       const line = lines[i];
+      const lower = line.toLowerCase();
+
+      if (
+        stopSections.some(section =>
+          lower.includes(section)
+        )
+      ) {
+        break;
+      }
+
+      if (
+        ignoreLines.some(item =>
+          lower.includes(item)
+        )
+      ) {
+        continue;
+      }
 
       if (
         line.match(/\d{4}/) ||
-        line.toLowerCase().includes('page') ||
-        line.toLowerCase().includes('permanent') ||
-        line.toLowerCase().includes('contract')
+        lower.includes('page') ||
+        lower.includes('permanent') ||
+        lower.includes('contract')
       ) {
-
         continue;
-
       }
-
-      if (
-        line.toLowerCase().includes('responsibilities')
-      ) {
-
-        break;
-
-      }
-
-      // Aspiro Sdn Bhd (HR Analyst)
 
       const bracketPattern = line.match(
         /(.*)\((.*)\)/
@@ -351,34 +352,33 @@ function extractDetails() {
 
         currentCompany = bracketPattern[1].trim();
         currentTitle = bracketPattern[2].trim();
-
         break;
-
       }
-
-      // HR Analyst, DHL Shared Services
 
       const commaPattern = line.match(
         /^(.+?),\s(.+)$/
       );
 
-      if (
-        commaPattern &&
-        !commaPattern[1].match(/\d{4}/)
-      ) {
+      if (commaPattern) {
 
-        currentTitle = commaPattern[1].trim();
-        currentCompany = commaPattern[2].trim();
+        const left = commaPattern[1].trim();
+        const right = commaPattern[2].trim();
 
-        break;
+        const rightLower = right.toLowerCase();
 
+        if (
+          companyKeywords.some(keyword =>
+            rightLower.includes(keyword)
+          )
+        ) {
+
+          currentTitle = left;
+          currentCompany = right;
+          break;
+        }
       }
-
     }
-
   }
-
-  // LANGUAGES
 
   const languageDatabase = [
     'English',
@@ -386,27 +386,35 @@ function extractDetails() {
     'Bahasa Malaysia',
     'Mandarin',
     'Chinese',
-    'Cantonese',
-    'Indonesia'
+    'Cantonese'
   ];
 
   const detectedLanguages = [];
 
-  for (let i = 0; i < languageDatabase.length; i++) {
+  let languageSection = '';
 
-    if (
-      text.toLowerCase().includes(
-        languageDatabase[i].toLowerCase()
-      )
-    ) {
+  const languageIndex = lines.findIndex(line =>
+    line.toLowerCase().includes('languages')
+  );
 
-      detectedLanguages.push(languageDatabase[i]);
+  if (languageIndex !== -1) {
 
-    }
+    languageSection = lines
+      .slice(languageIndex, languageIndex + 10)
+      .join(' ');
 
+    languageDatabase.forEach(language => {
+
+      if (
+        languageSection
+          .toLowerCase()
+          .includes(language.toLowerCase())
+      ) {
+        detectedLanguages.push(language);
+      }
+
+    });
   }
-
-  // SKILLS
 
   const skillsDatabase = [
     'SAP',
@@ -431,21 +439,19 @@ function extractDetails() {
 
   const detectedSkills = [];
 
-  for (let i = 0; i < skillsDatabase.length; i++) {
+  skillsDatabase.forEach(skill => {
 
     if (
-      text.toLowerCase().includes(
-        skillsDatabase[i].toLowerCase()
-      )
+      text.toLowerCase().includes(skill.toLowerCase())
     ) {
-
-      detectedSkills.push(skillsDatabase[i]);
-
+      detectedSkills.push(skill);
     }
 
-  }
+  });
 
-  // FILL FIELDS
+  if (!email || !fullName) {
+    alert('Resume may be incomplete. Please paste the full resume.');
+  }
 
   document.getElementById('name').value = fullName;
   document.getElementById('email').value = email;
