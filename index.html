@@ -1,3 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATS Resume Parser</title>
+
+  <style>
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    textarea {
+      width: 100%;
+      height: 320px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    button {
+      background: black;
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 30px;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    .field label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>ATS Resume Parser</h1>
+
+  <textarea id="resume" placeholder="Paste candidate resume here..."></textarea>
+
+  <button onclick="extractDetails()">
+    Parse Resume
+  </button>
+
+  <div class="field">
+    <label>Full Name</label>
+    <input id="name">
+  </div>
+
+  <div class="field">
+    <label>Email</label>
+    <input id="email">
+  </div>
+
+  <div class="field">
+    <label>Phone Number</label>
+    <input id="phone">
+  </div>
+
+  <div class="field">
+    <label>Current Job Title</label>
+    <input id="title">
+  </div>
+
+  <div class="field">
+    <label>Current Company</label>
+    <input id="company">
+  </div>
+
+  <div class="field">
+    <label>Location</label>
+    <input id="location">
+  </div>
+
+  <div class="field">
+    <label>Years of Experience</label>
+    <input id="experience">
+  </div>
+
+  <div class="field">
+    <label>Expected Salary</label>
+    <input id="salary">
+  </div>
+
+  <div class="field">
+    <label>Notice Period</label>
+    <input id="notice">
+  </div>
+
+  <div class="field">
+    <label>Languages</label>
+    <input id="languages">
+  </div>
+
+  <div class="field">
+    <label>Skills</label>
+    <input id="skills">
+  </div>
+
+</div>
+
 <script>
 
 function normalizeText(text) {
@@ -23,9 +159,7 @@ function extractDetails() {
     .map(line => line.trim())
     .filter(line => line.length > 0);
 
-  // ========================
-  // NAME
-  // ========================
+  // FULL NAME
 
   let fullName = '';
 
@@ -43,11 +177,10 @@ function extractDetails() {
       break;
 
     }
+
   }
 
-  // ========================
   // EMAIL
-  // ========================
 
   const emailMatch = text.match(
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
@@ -55,9 +188,7 @@ function extractDetails() {
 
   const email = emailMatch ? emailMatch[0] : '';
 
-  // ========================
   // PHONE
-  // ========================
 
   const phoneMatch = text.match(
     /(\+?\d[\d\s\-]{7,})/
@@ -65,9 +196,7 @@ function extractDetails() {
 
   const phone = phoneMatch ? phoneMatch[0] : '';
 
-  // ========================
   // LOCATION
-  // ========================
 
   let location = '';
 
@@ -79,9 +208,9 @@ function extractDetails() {
     /([A-Za-z\s]+,\s*Selangor)/i
   ];
 
-  for (let pattern of locationPatterns) {
+  for (let i = 0; i < locationPatterns.length; i++) {
 
-    const match = text.match(pattern);
+    const match = text.match(locationPatterns[i]);
 
     if (match) {
 
@@ -89,11 +218,10 @@ function extractDetails() {
       break;
 
     }
+
   }
 
-  // ========================
-  // EXPERIENCE YEARS
-  // ========================
+  // EXPERIENCE
 
   let experience = '';
 
@@ -102,9 +230,9 @@ function extractDetails() {
     /(\d+)\+?\s+years?\s+of\s+experience/i
   ];
 
-  for (let pattern of expPatterns) {
+  for (let i = 0; i < expPatterns.length; i++) {
 
-    const match = text.match(pattern);
+    const match = text.match(expPatterns[i]);
 
     if (match) {
 
@@ -112,11 +240,10 @@ function extractDetails() {
       break;
 
     }
+
   }
 
-  // ========================
   // SALARY
-  // ========================
 
   let salary = '';
 
@@ -130,9 +257,7 @@ function extractDetails() {
 
   }
 
-  // ========================
-  // NOTICE PERIOD
-  // ========================
+  // NOTICE
 
   let notice = '';
 
@@ -144,22 +269,22 @@ function extractDetails() {
     '3 Months'
   ];
 
-  noticeKeywords.forEach(keyword => {
+  for (let i = 0; i < noticeKeywords.length; i++) {
 
     if (
-      text.toLowerCase().includes(keyword.toLowerCase()) &&
-      notice === ''
+      text.toLowerCase().includes(
+        noticeKeywords[i].toLowerCase()
+      )
     ) {
 
-      notice = keyword;
+      notice = noticeKeywords[i];
+      break;
 
     }
 
-  });
+  }
 
-  // ========================
   // CURRENT ROLE + COMPANY
-  // ========================
 
   let currentTitle = '';
   let currentCompany = '';
@@ -173,21 +298,23 @@ function extractDetails() {
 
   let employmentIndex = -1;
 
-  lines.forEach((line, index) => {
+  for (let i = 0; i < lines.length; i++) {
 
-    employmentHeaders.forEach(header => {
+    for (let j = 0; j < employmentHeaders.length; j++) {
 
       if (
-        line.toLowerCase().includes(header)
+        lines[i].toLowerCase().includes(
+          employmentHeaders[j]
+        )
       ) {
 
-        employmentIndex = index;
+        employmentIndex = i;
 
       }
 
-    });
+    }
 
-  });
+  }
 
   if (employmentIndex !== -1) {
 
@@ -195,7 +322,6 @@ function extractDetails() {
 
       const line = lines[i];
 
-      // Skip dates/pages/contracts
       if (
         line.match(/\d{4}/) ||
         line.toLowerCase().includes('page') ||
@@ -207,7 +333,6 @@ function extractDetails() {
 
       }
 
-      // Stop scanning when responsibilities begin
       if (
         line.toLowerCase().includes('responsibilities')
       ) {
@@ -216,7 +341,6 @@ function extractDetails() {
 
       }
 
-      // Pattern:
       // Aspiro Sdn Bhd (HR Analyst)
 
       const bracketPattern = line.match(
@@ -225,17 +349,13 @@ function extractDetails() {
 
       if (bracketPattern) {
 
-        currentCompany = bracketPattern[1]
-          .trim();
-
-        currentTitle = bracketPattern[2]
-          .trim();
+        currentCompany = bracketPattern[1].trim();
+        currentTitle = bracketPattern[2].trim();
 
         break;
 
       }
 
-      // Pattern:
       // HR Analyst, DHL Shared Services
 
       const commaPattern = line.match(
@@ -247,11 +367,8 @@ function extractDetails() {
         !commaPattern[1].match(/\d{4}/)
       ) {
 
-        currentTitle = commaPattern[1]
-          .trim();
-
-        currentCompany = commaPattern[2]
-          .trim();
+        currentTitle = commaPattern[1].trim();
+        currentCompany = commaPattern[2].trim();
 
         break;
 
@@ -261,9 +378,7 @@ function extractDetails() {
 
   }
 
-  // ========================
   // LANGUAGES
-  // ========================
 
   const languageDatabase = [
     'English',
@@ -277,21 +392,21 @@ function extractDetails() {
 
   const detectedLanguages = [];
 
-  languageDatabase.forEach(language => {
+  for (let i = 0; i < languageDatabase.length; i++) {
 
     if (
-      text.toLowerCase().includes(language.toLowerCase())
+      text.toLowerCase().includes(
+        languageDatabase[i].toLowerCase()
+      )
     ) {
 
-      detectedLanguages.push(language);
+      detectedLanguages.push(languageDatabase[i]);
 
     }
 
-  });
+  }
 
-  // ========================
   // SKILLS
-  // ========================
 
   const skillsDatabase = [
     'SAP',
@@ -316,21 +431,21 @@ function extractDetails() {
 
   const detectedSkills = [];
 
-  skillsDatabase.forEach(skill => {
+  for (let i = 0; i < skillsDatabase.length; i++) {
 
     if (
-      text.toLowerCase().includes(skill.toLowerCase())
+      text.toLowerCase().includes(
+        skillsDatabase[i].toLowerCase()
+      )
     ) {
 
-      detectedSkills.push(skill);
+      detectedSkills.push(skillsDatabase[i]);
 
     }
 
-  });
+  }
 
-  // ========================
   // FILL FIELDS
-  // ========================
 
   document.getElementById('name').value = fullName;
   document.getElementById('email').value = email;
@@ -347,3 +462,6 @@ function extractDetails() {
 }
 
 </script>
+
+</body>
+</html>
