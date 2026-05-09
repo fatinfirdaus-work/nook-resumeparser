@@ -68,7 +68,9 @@
 
   <h1>Advanced ATS Resume Parser</h1>
 
-  <textarea id="resume" placeholder="Paste candidate resume here..."></textarea>
+  <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="margin-bottom:20px; display:block;">
+
+  <textarea id="resume" placeholder="Paste candidate resume here OR upload a resume..."></textarea>
 
   <button onclick="extractDetails()">
     Parse Resume
@@ -129,7 +131,55 @@
     <input id="skills">
   </div>
 
+  <div class="field">
+    <label>LinkedIn</label>
+    <input id="linkedin">
+  </div>
+
+  <div class="field">
+    <label>GitHub</label>
+    <input id="github">
+  </div>
+
+  <div class="field">
+    <label>Portfolio</label>
+    <input id="portfolio">
+  </div>
+
+  <div class="field">
+    <label>Employment Type</label>
+    <input id="employmentType">
+  </div>
+
+  <div class="field">
+    <label>Seniority</label>
+    <input id="seniority">
+  </div>
+
+  <div class="field">
+    <label>Industry</label>
+    <input id="industry">
+  </div>
+
+  <div class="field">
+    <label>Education Level</label>
+    <input id="educationLevel">
+  </div>
+
+  <div class="field">
+    <label>Work Mode</label>
+    <input id="workMode">
+  </div>
+
+  <div class="field">
+    <label>Resume Completeness</label>
+    <input id="completenessScore">
+  </div>
+
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 
 <script>
 
@@ -143,6 +193,106 @@ function normalizeText(text) {
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
+
+async function handleFileUpload() {
+
+  const fileInput = document.getElementById('resumeFile');
+  const file = fileInput.files[0];
+
+  if (!file) {
+    return;
+  }
+
+  const extension = file.name
+    .split('.')
+    .pop()
+    .toLowerCase();
+
+  // ========================
+  // PDF PARSING
+  // ========================
+
+  if (extension === 'pdf') {
+
+    const reader = new FileReader();
+
+    reader.onload = async function() {
+
+      const typedArray = new Uint8Array(reader.result);
+
+      const pdf = await pdfjsLib.getDocument(typedArray).promise;
+
+      let extractedText = '';
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+
+        const page = await pdf.getPage(pageNum);
+
+        const content = await page.getTextContent();
+
+        const strings = content.items.map(item => item.str);
+
+        extractedText += strings.join(' ') + '\n';
+
+      }
+
+      document.getElementById('resume').value = extractedText;
+
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ========================
+  // DOCX PARSING
+  // ========================
+
+  else if (extension === 'docx') {
+
+    const reader = new FileReader();
+
+    reader.onload = async function(event) {
+
+      const arrayBuffer = event.target.result;
+
+      const result = await mammoth.extractRawText({
+        arrayBuffer: arrayBuffer
+      });
+
+      document.getElementById('resume').value = result.value;
+
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ========================
+  // TXT PARSING
+  // ========================
+
+  else if (extension === 'txt') {
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+
+      document.getElementById('resume').value = event.target.result;
+
+    };
+
+    reader.readAsText(file);
+  }
+
+  else {
+
+    alert('Unsupported file type. Please upload PDF, DOCX, or TXT.');
+
+  }
+}
+
+document
+  .getElementById('resumeFile')
+  .addEventListener('change', handleFileUpload);
 
 function extractDetails() {
 
@@ -206,7 +356,19 @@ function extractDetails() {
     /([A-Za-z\s]+,\s*Singapore)/i,
     /([A-Za-z\s]+,\s*Hong Kong)/i,
     /([A-Za-z\s]+,\s*Negeri Sembilan)/i,
-    /([A-Za-z\s]+,\s*Selangor)/i
+    /([A-Za-z\s]+,\s*Selangor)/i,
+    /([A-Za-z\s]+,\s*Johor)/i,
+    /([A-Za-z\s]+,\s*Penang)/i,
+    /([A-Za-z\s]+,\s*London)/i,
+    /([A-Za-z\s]+,\s*United Kingdom)/i,
+    /([A-Za-z\s]+,\s*United States)/i,
+    /([A-Za-z\s]+,\s*New York)/i,
+    /([A-Za-z\s]+,\s*Sydney)/i,
+    /([A-Za-z\s]+,\s*Australia)/i,
+    /([A-Za-z\s]+,\s*Dubai)/i,
+    /([A-Za-z\s]+,\s*UAE)/i,
+    /([A-Za-z\s]+,\s*India)/i,
+    /([A-Za-z\s]+,\s*Philippines)/i
   ];
 
   for (let pattern of locationPatterns) {
@@ -282,18 +444,35 @@ function extractDetails() {
     'sdn bhd',
     'berhad',
     'ltd',
+    'limited',
     'inc',
+    'llc',
+    'plc',
+    'pte ltd',
     'group',
     'services',
+    'solutions',
+    'technologies',
+    'technology',
+    'consulting',
     'bank',
-    'telecom'
+    'telecom',
+    'corporation',
+    'corp',
+    'company',
+    'holdings'
   ];
 
   const employmentHeaders = [
     'working experiences',
     'employment history',
     'professional experience',
-    'experience'
+    'experience',
+    'career history',
+    'work history',
+    'work experience',
+    'employment',
+    'professional background'
   ];
 
   let employmentIndex = -1;
@@ -386,7 +565,18 @@ function extractDetails() {
     'Bahasa Malaysia',
     'Mandarin',
     'Chinese',
-    'Cantonese'
+    'Cantonese',
+    'Tamil',
+    'Hindi',
+    'Japanese',
+    'Korean',
+    'French',
+    'German',
+    'Spanish',
+    'Arabic',
+    'Thai',
+    'Vietnamese',
+    'Indonesian'
   ];
 
   const detectedLanguages = [];
@@ -449,6 +639,167 @@ function extractDetails() {
 
   });
 
+  // ========================
+  // LINKEDIN / GITHUB / PORTFOLIO
+  // ========================
+
+  let linkedin = '';
+  let github = '';
+  let portfolio = '';
+
+  const linkedinMatch = text.match(
+    /(https?:\/\/)?(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_/]+/i
+  );
+
+  if (linkedinMatch) {
+    linkedin = linkedinMatch[0];
+  }
+
+  const githubMatch = text.match(
+    /(https?:\/\/)?(www\.)?github\.com\/[A-Za-z0-9\-_/]+/i
+  );
+
+  if (githubMatch) {
+    github = githubMatch[0];
+  }
+
+  const portfolioMatch = text.match(
+    /(https?:\/\/)?(www\.)?[A-Za-z0-9\-]+\.(com|dev|io|me)/i
+  );
+
+  if (portfolioMatch) {
+    portfolio = portfolioMatch[0];
+  }
+
+  // ========================
+  // EMPLOYMENT TYPE
+  // ========================
+
+  let employmentType = '';
+
+  const employmentTypes = [
+    'Permanent',
+    'Contract',
+    'Internship',
+    'Freelance',
+    'Part-Time',
+    'Full-Time'
+  ];
+
+  for (let type of employmentTypes) {
+
+    if (
+      text.toLowerCase().includes(type.toLowerCase())
+    ) {
+      employmentType = type;
+      break;
+    }
+  }
+
+  // ========================
+  // SENIORITY DETECTION
+  // ========================
+
+  let seniority = '';
+
+  const seniorityMap = {
+    'intern': 'Intern',
+    'assistant': 'Junior',
+    'executive': 'Junior-Mid',
+    'specialist': 'Mid',
+    'senior': 'Senior',
+    'lead': 'Lead',
+    'manager': 'Manager',
+    'head': 'Leadership',
+    'director': 'Director',
+    'vp': 'Executive Leadership'
+  };
+
+  const lowerTitle = currentTitle.toLowerCase();
+
+  for (const key in seniorityMap) {
+
+    if (lowerTitle.includes(key)) {
+      seniority = seniorityMap[key];
+      break;
+    }
+  }
+
+  // ========================
+  // INDUSTRY DETECTION
+  // ========================
+
+  let industry = '';
+
+  const industryKeywords = {
+    'Banking & Financial Services': ['bank', 'financial', 'insurance'],
+    'Technology': ['software', 'saas', 'technology', 'developer'],
+    'Retail': ['retail', 'store', 'fmcg'],
+    'Healthcare': ['hospital', 'medical', 'healthcare'],
+    'HR & Shared Services': ['hr', 'payroll', 'recruitment', 'hris'],
+    'Logistics & Supply Chain': ['logistics', 'supply chain', 'warehouse']
+  };
+
+  for (const industryName in industryKeywords) {
+
+    const keywords = industryKeywords[industryName];
+
+    if (
+      keywords.some(keyword =>
+        text.toLowerCase().includes(keyword)
+      )
+    ) {
+      industry = industryName;
+      break;
+    }
+  }
+
+  // ========================
+  // EDUCATION LEVEL
+  // ========================
+
+  let educationLevel = '';
+
+  const educationLevels = [
+    'PhD',
+    'Master',
+    'MBA',
+    'Bachelor',
+    'Diploma'
+  ];
+
+  for (let level of educationLevels) {
+
+    if (
+      text.toLowerCase().includes(level.toLowerCase())
+    ) {
+      educationLevel = level;
+      break;
+    }
+  }
+
+  // ========================
+  // REMOTE / HYBRID
+  // ========================
+
+  let workMode = '';
+
+  const workModes = [
+    'Remote',
+    'Hybrid',
+    'Onsite'
+  ];
+
+  for (let mode of workModes) {
+
+    if (
+      text.toLowerCase().includes(mode.toLowerCase())
+    ) {
+      workMode = mode;
+      break;
+    }
+  }
+
   if (!email || !fullName) {
     alert('Resume may be incomplete. Please paste the full resume.');
   }
@@ -464,6 +815,29 @@ function extractDetails() {
   document.getElementById('notice').value = notice;
   document.getElementById('languages').value = detectedLanguages.join(', ');
   document.getElementById('skills').value = detectedSkills.join(', ');
+  document.getElementById('linkedin').value = linkedin;
+  document.getElementById('github').value = github;
+  document.getElementById('portfolio').value = portfolio;
+  document.getElementById('employmentType').value = employmentType;
+  document.getElementById('seniority').value = seniority;
+  document.getElementById('industry').value = industry;
+  document.getElementById('educationLevel').value = educationLevel;
+  document.getElementById('workMode').value = workMode;
+
+  let completenessScore = 0;
+
+  if (fullName) completenessScore += 10;
+  if (email) completenessScore += 10;
+  if (phone) completenessScore += 10;
+  if (currentTitle) completenessScore += 10;
+  if (currentCompany) completenessScore += 10;
+  if (experience) completenessScore += 10;
+  if (salary) completenessScore += 10;
+  if (notice) completenessScore += 10;
+  if (linkedin) completenessScore += 10;
+  if (detectedSkills.length > 0) completenessScore += 10;
+
+  document.getElementById('completenessScore').value = completenessScore + '%';
 
 }
 
